@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateMicrocontrollerDto } from './create-controller.dto';
+import { RegisterMicrocontrollerDto } from './register-controller.dto';
 
 export class UpdateMicrocontrollerDto extends PartialType(
-  CreateMicrocontrollerDto,
+  RegisterMicrocontrollerDto,
 ) {}
