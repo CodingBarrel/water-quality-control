@@ -9,21 +9,44 @@ import {
   Logger,
 } from '@nestjs/common';
 import { MicrocontrollersService } from './microcontrollers.service';
-import { CreateMicrocontrollerDto } from './dto/create-controller.dto';
-import { UpdateMicrocontrollerDto } from './dto/update-controller.dto';
+import { RegisterMicrocontrollerDto } from './dto/register-controller.dto';
+import { AdminUpdateMicrocontrollerDto } from './dto/admin-update-controller.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
+import { ControllerStatus } from './entities/microcontrollers.entity';
+import { AlertsService } from 'src/alerts/alerts.service';
+import { ConfigurationService } from 'src/configuration/configuration.service';
 
 @Controller('controllers')
 export class MicrocontrollersController {
   private readonly logger = new Logger(MicrocontrollersController.name);
 
-  constructor(private readonly service: MicrocontrollersService) {}
+  constructor(
+    private readonly service: MicrocontrollersService,
+    private readonly alertService: AlertsService,
+    private readonly configService: ConfigurationService,
+  ) {}
 
-  @Post()
-  create(@Body() dto: CreateMicrocontrollerDto) {
-    this.logger.log(
-      `Creating microcontroller SN=${dto.serialNumber}, location=${dto.location}`,
-    );
-    return this.service.create(dto);
+  @Get('/statuses')
+  getStatuses() {
+    this.logger.log('Sending statuses');
+    return ControllerStatus;
+  }
+
+  @Post('')
+  async register(@Body() dto: RegisterMicrocontrollerDto) {
+    this.logger.log(`Incoming registration from SN=${dto.serialNumber}`);
+    const res = await this.service.registerOrUpdate(dto);
+    await this.alertService.create({
+      message: 'Register controller request',
+      level: 'INFO',
+      relatedData: dto,
+    });
+    return res;
+  }
+
+  @Patch(':serial/status')
+  updateStatus(@Param('serial') sn: string, @Body() dto: UpdateStatusDto) {
+    this.logger.log(`Updated status for SN=${sn} to ${dto.status}`);
   }
 
   @Get()
@@ -39,7 +62,10 @@ export class MicrocontrollersController {
   }
 
   @Patch(':serial')
-  update(@Param('serial') sn: string, @Body() dto: UpdateMicrocontrollerDto) {
+  update(
+    @Param('serial') sn: string,
+    @Body() dto: AdminUpdateMicrocontrollerDto,
+  ) {
     this.logger.log(
       `Updating microcontroller SN=${sn}, fields=${Object.keys(dto).join(', ')}`,
     );
